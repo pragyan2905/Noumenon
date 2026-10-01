@@ -6,10 +6,10 @@ WORKDIR /app
 
 # Install system dependencies
 # - ffmpeg: Required for video/audio media conversions
-# - libgl1-mesa-glx: Sometimes required by image processing libraries
+# - libgl1: Sometimes required by image processing libraries
 RUN apt-get update && apt-get install -y \
     ffmpeg \
-    libgl1-mesa-glx \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements and install Python dependencies
