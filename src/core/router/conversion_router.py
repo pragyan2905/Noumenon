@@ -48,5 +48,5 @@ class ConversionRouter:
         return ConversionResult(
             success=False,
             warnings=warnings,
-            error_message="All available engines failed to convert the document."
+            error_message=f"All available engines failed to convert the document. Details: {', '.join(warnings)}"
         )

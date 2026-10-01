@@ -12,10 +12,17 @@ RUN npm run build
 FROM python:3.13-slim
 WORKDIR /app
 
-# Install system dependencies (ffmpeg and libgl1)
+# Install system dependencies (ffmpeg, libgl1, and image libraries for Pillow)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libgl1 \
+    libjpeg-dev \
+    zlib1g-dev \
+    libpng-dev \
+    libwebp-dev \
+    libfreetype6-dev \
+    libtiff5-dev \
+    libopenjp2-7-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python requirements
