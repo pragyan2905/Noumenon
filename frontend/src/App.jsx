@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react'
 
 const TABS = [
-  { id: 'image', label: '🖼️ Image', theme: 'image' },
-  { id: 'document', label: '📄 Document', theme: 'document' },
-  { id: 'data', label: '📊 Data', theme: 'data' },
-  { id: 'media', label: '🎵 Media', theme: 'media' },
-  { id: 'archive', label: '📦 Archive', theme: 'archive' },
+  { id: 'image', label: 'Image', theme: 'image' },
+  { id: 'document', label: 'Document', theme: 'document' },
+  { id: 'data', label: 'Data', theme: 'data' },
+  { id: 'media', label: 'Media', theme: 'media' },
+  { id: 'archive', label: 'Archive', theme: 'archive' },
 ];
 
 const EXTENSION_MAP = {
@@ -129,7 +129,7 @@ function App() {
         {TABS.map(tab => (
           <button 
             key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? 'active ' + tab.theme : ''}`}
+            className={`tab-btn ${tab.theme} ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => {
               setActiveTab(tab.id);
               setTargetFormat(EXTENSION_MAP[tab.id][0]);
