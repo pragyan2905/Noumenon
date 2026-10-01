@@ -24,8 +24,6 @@ class TesseractOcrEngine(ConversionEngine):
             self.available = False
 
     def can_convert(self, source_format: str, target_format: str) -> bool:
-        if not self.available:
-            return False
         # Image to Text (OCR)
         if source_format in self.IMAGE_FORMATS and target_format == 'txt':
             return True
@@ -40,6 +38,12 @@ class TesseractOcrEngine(ConversionEngine):
         return 'B'
 
     def convert(self, request: ConversionRequest) -> ConversionResult:
+        if not self.available:
+            return ConversionResult(
+                success=False,
+                error_message="Tesseract OCR is not installed on this system. Please install tesseract-ocr to use this feature."
+            )
+            
         source_ext = request.input_path.suffix.lower().lstrip('.')
         target_ext = request.output_format.lower().lstrip('.')
         
@@ -58,22 +62,29 @@ class TesseractOcrEngine(ConversionEngine):
             
             temp_out = Path(f"{temp_out_base_path}.{target_ext}")
             
+            # Create a safe, space-less temporary input file for Tesseract
+            # Leptonica sometimes struggles with spaces or special chars in filenames
+            in_fd, temp_in_path_str = tempfile.mkstemp(suffix=f".{source_ext}")
+            os.close(in_fd)
+            temp_in = Path(temp_in_path_str)
+            shutil.copy2(request.input_path, temp_in)
+            
             try:
                 lang = request.options.get('lang', 'eng') if request.options else 'eng'
                 
-                cmd = ["tesseract", str(request.input_path), temp_out_base_path, "-l", lang]
+                cmd = ["tesseract", str(temp_in), temp_out_base_path, "-l", lang]
                 if target_ext == 'pdf':
                     cmd.append("pdf")
                 else:
                     cmd.append("txt")
                     
-                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors='replace')
                 
                 if result.returncode != 0:
                     raise RuntimeError(f"Tesseract failed: {result.stderr}")
                 
                 if not temp_out.exists():
-                    raise RuntimeError("Tesseract did not produce the expected output file.")
+                    raise RuntimeError(f"Tesseract did not produce the expected output file. Stderr: {result.stderr}")
                 
                 # Verify output file isn't empty
                 if temp_out.stat().st_size == 0:
@@ -82,10 +93,11 @@ class TesseractOcrEngine(ConversionEngine):
                 output_path = request.output_directory / f"{request.input_path.stem}.{target_ext}"
                 shutil.move(str(temp_out), str(output_path))
                 
-            except Exception as e:
+            finally:
                 if temp_out.exists():
                     temp_out.unlink()
-                raise e
+                if temp_in.exists():
+                    temp_in.unlink()
                 
             return ConversionResult(
                 success=True,

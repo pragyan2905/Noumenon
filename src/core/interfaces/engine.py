@@ -25,6 +25,6 @@ class ConversionEngine(ABC):
     @abstractmethod
     def get_quality_score(self) -> str:
         """
-        Returns a quality tier (e.g., 'A' for Structure-preserving, 'C' for Semantic).
+        Returns a quality tier (e.g., 'A' for standard, 'B' for fallback).
         """
         pass

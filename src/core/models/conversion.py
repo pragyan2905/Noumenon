@@ -18,5 +18,4 @@ class ConversionResult:
     engine_used: Optional[str] = None
     duration_seconds: float = 0.0
     warnings: list[str] = field(default_factory=list)
-    fidelity_score: Optional[float] = None
     error_message: Optional[str] = None

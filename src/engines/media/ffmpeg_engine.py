@@ -25,8 +25,6 @@ class FFMpegEngine(ConversionEngine):
             self.available = False
 
     def can_convert(self, source_format: str, target_format: str) -> bool:
-        if not self.available:
-            return False
         # Can extract audio from video, convert audio->audio, video->video
         if source_format in self.ALL_FORMATS and target_format in self.ALL_FORMATS:
             return True
@@ -36,6 +34,12 @@ class FFMpegEngine(ConversionEngine):
         return 'A'
 
     def convert(self, request: ConversionRequest) -> ConversionResult:
+        if not self.available:
+            return ConversionResult(
+                success=False,
+                error_message="FFmpeg is not installed on this system. Please install ffmpeg to use this feature."
+            )
+            
         source_ext = request.input_path.suffix.lower().lstrip('.')
         target_ext = request.output_format.lower().lstrip('.')
         
