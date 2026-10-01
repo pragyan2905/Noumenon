@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 
 const TABS = [
-  { id: 'image', label: 'Image Processing', desc: 'Resize, rotate, grayscale, & convert', theme: 'image', icon: '🖼️' },
-  { id: 'document', label: 'Document Tools', desc: 'PDF encryption, extraction, & conversion', theme: 'document', icon: '📄' },
-  { id: 'data', label: 'Data Conversion', desc: 'Excel, Parquet, JSON, CSV & more', theme: 'data', icon: '📊' },
-  { id: 'media', label: 'Media Encoding', desc: 'Video & audio format conversion', theme: 'media', icon: '🎵' },
-  { id: 'archive', label: 'Archive Utilities', desc: 'Zip, Tar, Extract & Repack', theme: 'archive', icon: '📦' },
+  { id: 'image', label: 'Image Processing', desc: 'Resize, rotate, grayscale, & convert', theme: 'image' },
+  { id: 'document', label: 'Document Tools', desc: 'PDF encryption, extraction, & conversion', theme: 'document' },
+  { id: 'data', label: 'Data Conversion', desc: 'Excel, Parquet, JSON, CSV & more', theme: 'data' },
+  { id: 'media', label: 'Media Encoding', desc: 'Video & audio format conversion', theme: 'media' },
+  { id: 'archive', label: 'Archive Utilities', desc: 'Zip, Tar, Extract & Repack', theme: 'archive' },
 ];
 
 const EXTENSION_MAP = {
@@ -164,15 +164,15 @@ function App() {
       <main>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
-            <h1>Local<span>Convert</span></h1>
+            <h1>Nou<span>menon</span></h1>
             <p className="subtitle">Private, local file conversion. Everything stays on your device.</p>
           </div>
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
-            style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)' }}
+            style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '5px 10px', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', fontWeight: 'bold' }}
             title="Toggle Dark Mode"
           >
-            {isDarkMode ? '☀️' : '🌙'}
+            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
           </button>
         </div>
         
@@ -187,8 +187,7 @@ function App() {
                 setStatus(null);
               }}
             >
-              <div style={{ fontSize: '3rem', marginBottom: '10px' }}>{tab.icon}</div>
-              <h3>{tab.label}</h3>
+              <h3 style={{ margin: '0 0 5px 0' }}>{tab.label}</h3>
               <p>{tab.desc}</p>
             </div>
           ))}
@@ -205,10 +204,10 @@ function App() {
         </button>
         <button 
           onClick={() => setIsDarkMode(!isDarkMode)}
-          style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)' }}
+          style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '5px 10px', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', fontWeight: 'bold' }}
           title="Toggle Dark Mode"
         >
-          {isDarkMode ? '☀️' : '🌙'}
+          {isDarkMode ? 'Light Mode' : 'Dark Mode'}
         </button>
       </div>
       
@@ -223,7 +222,7 @@ function App() {
             onDrop={handleDrop}
             onClick={() => fileInputRef.current.click()}
           >
-            <div className="upload-icon">📁</div>
+            <div className="upload-icon" style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>+</div>
             <div className="upload-text">Drag & Drop your file here</div>
             <div className="upload-subtext">or click to browse</div>
             <input 
@@ -235,7 +234,7 @@ function App() {
           </div>
         ) : (
           <div className="file-info">
-            <span className="file-name">📄 {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+            <span className="file-name">{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
             <button className="remove-btn" onClick={removeFile}>✖</button>
           </div>
         )}
@@ -365,7 +364,7 @@ function App() {
 
         {status && (
           <div className={`status-box status-${status.type}`}>
-            <h3>{status.type === 'success' ? '✅ Success!' : '❌ Error'}</h3>
+            <h3>{status.type === 'success' ? 'Success!' : 'Error'}</h3>
             <p>{status.message}</p>
             
             {status.warnings && status.warnings.length > 0 && (

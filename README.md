@@ -1,8 +1,8 @@
-# LocalConvert
+# Noumenon
 
 **Private file conversion. Everything stays on your device.**
 
-LocalConvert is a privacy-first, local-only, high-quality file conversion utility for macOS and Windows. 
+Noumenon is a privacy-first, local-only, high-quality file conversion utility for macOS and Windows. 
 The long-term goal is to create a local desktop alternative to services such as iLovePDF, Smallpdf, CloudConvert, etc., with a critical distinction: **User files must never need to be uploaded to a remote server.**
 
 ## Features

@@ -27,7 +27,7 @@ from src.engines.ocr.tesseract_engine import TesseractOcrEngine
 from src.engines.media.ffmpeg_engine import FFMpegEngine
 from src.engines.archive.archive_engine import ArchiveEngine
 
-app = FastAPI(title="LocalConvert API")
+app = FastAPI(title="Noumenon API")
 
 # Setup CORS for the React frontend
 app.add_middleware(
@@ -93,7 +93,7 @@ async def convert_file(
             
         # We need to copy the final file out of the temp directory 
         # so FileResponse can serve it after this function exits and cleans up temp_dir
-        serve_dir = Path("/tmp/localconvert_serve")
+        serve_dir = Path("/tmp/noumenon_serve")
         serve_dir.mkdir(exist_ok=True)
         serve_path = serve_dir / final_path.name
         shutil.copy2(final_path, serve_path)
@@ -119,4 +119,4 @@ if frontend_dist.exists():
 else:
     @app.get("/")
     def read_root():
-        return {"message": "LocalConvert API is running. Build the frontend using 'npm run build' to see the UI."}
+        return {"message": "Noumenon API is running. Build the frontend using 'npm run build' to see the UI."}
