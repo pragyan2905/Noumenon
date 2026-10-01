@@ -1,0 +1,40 @@
+==================================================
+LocalConvert Conversion Report
+==================================================
+
+Input:            Pragyan_Sharma_Resume .pdf
+Output:           Pragyan_Sharma_Resume _editable.docx
+Strategy:         SemanticFlow
+Engine:           SemanticFlow
+
+--- PAGINATION ---
+Source pages:      1
+Output pages:      1
+Blank pages:       0
+Suspicious pages:  0
+Status:            PASS
+
+--- TEXT ---
+Source words:      533
+Output words:      542
+Text similarity:   91.8%
+Missing phrases:   0
+Status:            PASS
+
+--- IMAGES ---
+Source images:     0
+Output images:     0
+Preserved:         YES
+Status:            PASS
+
+--- EDITABILITY ---
+Editable text:     YES
+Text elements:     15
+Image elements:    0
+Level:             HIGH
+
+--- WARNINGS ---
+  None
+
+OVERALL:           PASS
+==================================================

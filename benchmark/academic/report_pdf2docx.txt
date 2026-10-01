@@ -1,0 +1,40 @@
+==================================================
+LocalConvert Conversion Report
+==================================================
+
+Input:            2309.07597v2.pdf
+Output:           2309.07597v2.docx
+Strategy:         pdf2docx
+Engine:           pdf2docx
+
+--- PAGINATION ---
+Source pages:      9
+Output pages:      14
+Blank pages:       0
+Suspicious pages:  0
+Status:            FAIL
+
+--- TEXT ---
+Source words:      8351
+Output words:      5402
+Text similarity:   63.5%
+Missing phrases:   0
+Status:            FAIL
+
+--- IMAGES ---
+Source images:     13
+Output images:     14
+Preserved:         YES
+Status:            PASS
+
+--- EDITABILITY ---
+Editable text:     YES
+Text elements:     181
+Image elements:    14
+Level:             MEDIUM
+
+--- WARNINGS ---
+  None
+
+OVERALL:           FAIL
+==================================================
