@@ -10,7 +10,7 @@ const TABS = [
 
 const EXTENSION_MAP = {
   'image': ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tiff', 'gif', 'pdf', 'txt'],
-  'document': ['pdf', 'png', 'jpg', 'txt'],
+  'document': ['pdf', 'docx', 'png', 'jpg', 'txt'],
   'data': ['csv', 'json', 'yaml', 'yml', 'xml', 'toml', 'tsv'],
   'media': ['mp4', 'mp3', 'wav', 'mkv', 'avi', 'mov', 'aac', 'flac'],
   'archive': ['zip', 'tar', 'gz', 'bz2']

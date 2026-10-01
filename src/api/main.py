@@ -19,6 +19,7 @@ from src.core.router.conversion_router import ConversionRouter
 
 from src.engines.image.pillow_engine import PillowImageEngine
 from src.engines.pdf.pymupdf_engine import PyMuPdfEngine
+from src.engines.pdf.docx_engine import DocxEngine
 from src.engines.data.data_engine import DataEngine
 from src.engines.text.text_engine import TextEngine
 from src.engines.ocr.tesseract_engine import TesseractOcrEngine
@@ -40,6 +41,7 @@ app.add_middleware(
 registry = EngineRegistry()
 registry.register(PillowImageEngine())
 registry.register(PyMuPdfEngine())
+registry.register(DocxEngine())
 registry.register(DataEngine())
 registry.register(TextEngine())
 registry.register(TesseractOcrEngine())
