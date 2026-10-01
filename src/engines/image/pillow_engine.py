@@ -50,18 +50,25 @@ class PillowImageEngine(ConversionEngine):
                 options = request.options or {}
                 
                 # Transformations
-                if options.get('resize'):
-                    # resize should be a tuple (width, height)
+                if options.get('scale') and options['scale'] != 100:
+                    scale_factor = float(options['scale']) / 100.0
+                    new_width = int(img.width * scale_factor)
+                    new_height = int(img.height * scale_factor)
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                elif options.get('width') or options.get('height'):
+                    new_w = int(options.get('width') or img.width)
+                    new_h = int(options.get('height') or img.height)
+                    img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                elif options.get('resize'):
+                    # legacy tuple support
                     width, height = options['resize']
                     img = img.resize((width, height), Image.Resampling.LANCZOS)
                 
                 if options.get('crop'):
-                    # crop should be a tuple (left, top, right, bottom)
                     img = img.crop(options['crop'])
                     
                 if options.get('rotate'):
-                    # rotate should be an angle in degrees
-                    img = img.rotate(options['rotate'], expand=True)
+                    img = img.rotate(int(options['rotate']), expand=True)
                     
                 if options.get('flip') == 'horizontal':
                     img = ImageOps.mirror(img)
@@ -85,6 +92,11 @@ class PillowImageEngine(ConversionEngine):
 
                 if img.mode != 'RGB' and target_ext in ('jpeg', 'bmp'):
                     img = img.convert('RGB')
+                    
+                # Grayscale conversion
+                if options.get('grayscale'):
+                    img = img.convert('L')
+                    # Convert back to RGB if saving to jpeg and it complains, but PIL handles 'L' to JPEG fine.
                 
                 # 3. Write to temporary output first
                 fd, temp_out_path = tempfile.mkstemp(suffix=f".{target_ext}")
@@ -95,9 +107,17 @@ class PillowImageEngine(ConversionEngine):
                 try:
                     save_kwargs = {}
                     if options.get('quality'):
-                        save_kwargs['quality'] = options['quality']
+                        save_kwargs['quality'] = int(options['quality'])
                         if target_ext == 'jpeg':
                             save_kwargs['optimize'] = True
+                            
+                    if options.get('dpi'):
+                        val = int(options['dpi'])
+                        save_kwargs['dpi'] = (val, val)
+                        
+                    # EXIF Metadata removal
+                    if not options.get('remove_metadata', False) and 'exif' in img.info:
+                        save_kwargs['exif'] = img.info['exif']
                     
                     img.save(temp_out, format=target_ext.upper(), **save_kwargs)
                     

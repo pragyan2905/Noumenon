@@ -18,6 +18,12 @@ try:
 except ImportError:
     HAS_TOML = False
 
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
+
 from src.core.interfaces.engine import ConversionEngine
 from src.core.models.conversion import ConversionRequest, ConversionResult
 
@@ -30,10 +36,11 @@ class DataEngine(ConversionEngine):
     def __init__(self):
         self.formats = {'json', 'csv', 'tsv'}
         if HAS_YAML:
-            self.formats.add('yaml')
-            self.formats.add('yml')
+            self.formats.update({'yaml', 'yml'})
         if HAS_TOML:
             self.formats.add('toml')
+        if HAS_PANDAS:
+            self.formats.update({'xlsx', 'parquet'})
 
     def can_convert(self, source_format: str, target_format: str) -> bool:
         return source_format in self.formats and target_format in self.formats
@@ -53,6 +60,15 @@ class DataEngine(ConversionEngine):
                 delimiter = '\t' if ext == 'tsv' else ','
                 reader = csv.DictReader(f, delimiter=delimiter)
                 return [row for row in reader]
+        
+        # Binary formats handled by pandas
+        if HAS_PANDAS and ext in ('xlsx', 'parquet'):
+            if ext == 'xlsx':
+                df = pd.read_excel(path)
+            else:
+                df = pd.read_parquet(path)
+            return df.to_dict('records')
+            
         raise ValueError(f"Unsupported read format: {ext}")
 
     def _write_data(self, data, path: Path, ext: str):
@@ -86,7 +102,36 @@ class DataEngine(ConversionEngine):
                 else:
                     raise ValueError(f"Data structure not suitable for {ext.upper()} conversion.")
             else:
-                raise ValueError(f"Unsupported write format: {ext}")
+                if HAS_PANDAS and ext in ('xlsx', 'parquet'):
+                    pass # Handled outside the with block
+                else:
+                    raise ValueError(f"Unsupported write format: {ext}")
+
+        # Handle binary writes
+        if HAS_PANDAS and ext in ('xlsx', 'parquet'):
+            # Convert list of dicts to dataframe
+            if isinstance(data, dict):
+                df = pd.DataFrame(list(data.items()), columns=['key', 'value'])
+                # Convert complex values to strings for parquet/excel compatibility
+                df['value'] = df['value'].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
+            elif isinstance(data, list):
+                # Ensure all complex dicts/lists inside the main list are strings for parquet
+                processed_data = []
+                for row in data:
+                    if isinstance(row, dict):
+                        processed_data.append({k: json.dumps(v) if isinstance(v, (dict, list)) else v for k, v in row.items()})
+                    else:
+                        processed_data.append(row)
+                df = pd.DataFrame(processed_data)
+            else:
+                raise ValueError(f"Data structure not suitable for {ext.upper()} conversion.")
+                
+            if ext == 'xlsx':
+                df.to_excel(path, index=False)
+            else:
+                # Parquet requires string column names
+                df.columns = df.columns.astype(str)
+                df.to_parquet(path, index=False)
 
     def convert(self, request: ConversionRequest) -> ConversionResult:
         source_ext = request.input_path.suffix.lower().lstrip('.')

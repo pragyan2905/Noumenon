@@ -56,6 +56,13 @@ class PyMuPdfEngine(ConversionEngine):
                     # For simplicity, convert the first page, or use options to specify page
                     try:
                         doc = fitz.open(request.input_path)
+                        options = request.options or {}
+                        
+                        # Handle decryption if password provided
+                        if doc.needs_pass:
+                            pwd = options.get('password', '')
+                            if not doc.authenticate(pwd):
+                                raise ValueError("PDF is encrypted. Invalid or missing password.")
                     except Exception as e:
                         raise ValueError(f"Failed to open PDF: {str(e)}")
                     
@@ -121,30 +128,60 @@ class PyMuPdfEngine(ConversionEngine):
                     except Exception as e:
                         raise ValueError(f"Generated PDF verification failed: {str(e)}")
 
-                # PDF to PDF (Transformations, Optimize)
+                # PDF to PDF (Transformations, Optimize, Extract, Password)
                 elif source_ext == 'pdf' and target_ext == 'pdf':
                     try:
                         doc = fitz.open(request.input_path)
+                        options = request.options or {}
+                        
+                        if doc.needs_pass:
+                            pwd = options.get('password', '')
+                            if not doc.authenticate(pwd):
+                                raise ValueError("PDF is encrypted. Invalid or missing password.")
                     except Exception as e:
                         raise ValueError(f"Failed to open PDF: {str(e)}")
                         
-                    options = request.options or {}
+                    # Handle page extraction
+                    if 'page' in options and options['page'] != '':
+                        try:
+                            # 1-indexed to 0-indexed
+                            page_num = int(options['page']) - 1
+                            if page_num < 0 or page_num >= doc.page_count:
+                                raise ValueError(f"Page number out of bounds.")
+                            
+                            new_doc = fitz.open()
+                            new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+                            doc.close()
+                            doc = new_doc
+                        except ValueError as ve:
+                             raise ValueError(f"Invalid page extraction: {str(ve)}")
                     
                     if options.get('metadata'):
                         doc.set_metadata(options['metadata'])
                         
-                    # Rotate page
+                    # Rotate all pages if specified
                     if options.get('rotate'):
-                        page_num = options.get('page', 0)
-                        page = doc.load_page(page_num)
-                        page.set_rotation(options['rotate'])
+                        try:
+                            rot = int(options['rotate'])
+                            for page in doc:
+                                page.set_rotation(rot)
+                        except Exception:
+                            pass
+                            
+                    # Encryption options
+                    save_kwargs = {
+                        "garbage": options.get('garbage', 4),
+                        "deflate": options.get('deflate', True)
+                    }
+                    
+                    encrypt_pwd = options.get('encrypt_password')
+                    if encrypt_pwd:
+                        save_kwargs["encryption"] = fitz.PDF_ENCRYPT_AES_256
+                        save_kwargs["owner_pw"] = encrypt_pwd
+                        save_kwargs["user_pw"] = encrypt_pwd
                         
-                    # Save with optimization
-                    doc.save(
-                        temp_out, 
-                        garbage=options.get('garbage', 4), 
-                        deflate=options.get('deflate', True)
-                    )
+                    # Save with optimization and/or encryption
+                    doc.save(temp_out, **save_kwargs)
                     doc.close()
                     
                     # Verify output PDF

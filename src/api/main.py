@@ -12,6 +12,7 @@ sys.path.append(str(project_root))
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.core.models.conversion import ConversionRequest
 from src.core.registry.engine_registry import EngineRegistry
@@ -110,3 +111,12 @@ async def convert_file(
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+# Mount the static frontend if it exists
+frontend_dist = project_root / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+else:
+    @app.get("/")
+    def read_root():
+        return {"message": "LocalConvert API is running. Build the frontend using 'npm run build' to see the UI."}
