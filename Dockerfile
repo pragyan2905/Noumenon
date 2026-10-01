@@ -1,26 +1,36 @@
-# Use an official lightweight Python runtime
-FROM python:3.13-slim
+# Stage 1: Build the React frontend
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app/frontend
+# Copy only package.json first for cache efficiency
+COPY frontend/package*.json ./
+RUN npm install
+# Copy the rest of the frontend code and build
+COPY frontend/ .
+RUN npm run build
 
-# Set the working directory in the container
+# Stage 2: Setup the Python backend
+FROM python:3.13-slim
 WORKDIR /app
 
-# Install system dependencies
-# - ffmpeg: Required for video/audio media conversions
-# - libgl1: Sometimes required by image processing libraries
+# Install system dependencies (ffmpeg and libgl1)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements and install Python dependencies
+# Install Python requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
+# Copy the entire backend source code
 COPY . .
 
-# Expose the port that Uvicorn will listen on
+# Copy the compiled static frontend from Stage 1 into the final image
+# This ensures FastAPI can find it when looking at frontend/dist
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
+
+# Expose the port Uvicorn will listen on
 EXPOSE 10000
 
-# Start the unified FastAPI server (serves both the API and the React frontend)
+# Start the unified FastAPI server
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "10000"]
