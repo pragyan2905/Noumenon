@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 
 @dataclass
@@ -9,6 +9,7 @@ class ConversionRequest:
     output_format: str
     output_directory: Path
     options: Dict[str, Any] = field(default_factory=dict)
+    input_paths: Optional[List[Path]] = None
 
 @dataclass
 class ConversionResult:

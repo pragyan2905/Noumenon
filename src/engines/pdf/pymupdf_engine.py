@@ -128,33 +128,44 @@ class PyMuPdfEngine(ConversionEngine):
                     except Exception as e:
                         raise ValueError(f"Generated PDF verification failed: {str(e)}")
 
-                # PDF to PDF (Transformations, Optimize, Extract, Password)
+                # PDF to PDF (Transformations, Optimize, Extract, Password, Merge, Watermark)
                 elif source_ext == 'pdf' and target_ext == 'pdf':
-                    try:
-                        doc = fitz.open(request.input_path)
-                        options = request.options or {}
-                        
-                        if doc.needs_pass:
-                            pwd = options.get('password', '')
-                            if not doc.authenticate(pwd):
-                                raise ValueError("PDF is encrypted. Invalid or missing password.")
-                    except Exception as e:
-                        raise ValueError(f"Failed to open PDF: {str(e)}")
-                        
-                    # Handle page extraction
-                    if 'page' in options and options['page'] != '':
+                    options = request.options or {}
+                    action = options.get('action')
+                    
+                    if action == 'merge' and getattr(request, 'input_paths', None):
+                        doc = fitz.open()
+                        for p in request.input_paths:
+                            try:
+                                src_doc = fitz.open(p)
+                                doc.insert_pdf(src_doc)
+                                src_doc.close()
+                            except Exception as e:
+                                warnings.append(f"Failed to merge {p.name}: {str(e)}")
+                    else:
                         try:
-                            # 1-indexed to 0-indexed
-                            page_num = int(options['page']) - 1
-                            if page_num < 0 or page_num >= doc.page_count:
-                                raise ValueError(f"Page number out of bounds.")
+                            doc = fitz.open(request.input_path)
+                            if doc.needs_pass:
+                                pwd = options.get('password', '')
+                                if not doc.authenticate(pwd):
+                                    raise ValueError("PDF is encrypted. Invalid or missing password.")
+                        except Exception as e:
+                            raise ValueError(f"Failed to open PDF: {str(e)}")
                             
-                            new_doc = fitz.open()
-                            new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
-                            doc.close()
-                            doc = new_doc
-                        except ValueError as ve:
-                             raise ValueError(f"Invalid page extraction: {str(ve)}")
+                        # Handle page extraction
+                        if 'page' in options and options['page'] != '':
+                            try:
+                                # 1-indexed to 0-indexed
+                                page_num = int(options['page']) - 1
+                                if page_num < 0 or page_num >= doc.page_count:
+                                    raise ValueError(f"Page number out of bounds.")
+                                
+                                new_doc = fitz.open()
+                                new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+                                doc.close()
+                                doc = new_doc
+                            except ValueError as ve:
+                                 raise ValueError(f"Invalid page extraction: {str(ve)}")
                     
                     if options.get('metadata'):
                         doc.set_metadata(options['metadata'])
@@ -168,11 +179,28 @@ class PyMuPdfEngine(ConversionEngine):
                         except Exception:
                             pass
                             
-                    # Encryption options
+                    # Watermarking
+                    if options.get('watermark'):
+                        wm_text = options['watermark']
+                        for page in doc:
+                            # Insert diagonally across page
+                            rect = page.rect
+                            p1 = fitz.Point(rect.width * 0.1, rect.height * 0.9)
+                            page.insert_text(p1, wm_text, fontsize=48, color=(0.8, 0.8, 0.8), rotate=45, fill_opacity=0.5)
+                            
+                    # Encryption and Compression options
                     save_kwargs = {
-                        "garbage": options.get('garbage', 4),
-                        "deflate": options.get('deflate', True)
+                        "garbage": 4, # Max garbage collection
+                        "deflate": True,
+                        "clean": True
                     }
+                    
+                    if options.get('compress_level') == 'high':
+                        # More aggressive optimization flags
+                        save_kwargs["deflate"] = True
+                        save_kwargs["deflate_images"] = True
+                        save_kwargs["deflate_fonts"] = True
+                        save_kwargs["garbage"] = 4
                     
                     encrypt_pwd = options.get('encrypt_password')
                     if encrypt_pwd:

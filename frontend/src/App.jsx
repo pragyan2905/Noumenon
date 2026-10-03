@@ -18,7 +18,7 @@ const EXTENSION_MAP = {
 
 function App() {
   const [activeTab, setActiveTab] = useState(null); // null = Home Dashboard
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [targetFormat, setTargetFormat] = useState('png');
   const [quality, setQuality] = useState(90);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -40,11 +40,23 @@ function App() {
   const [imgRemoveMetadata, setImgRemoveMetadata] = useState(true);
   const [imgDpi, setImgDpi] = useState('');
   
+  const [imgBrightness, setImgBrightness] = useState(100);
+  const [imgContrast, setImgContrast] = useState(100);
+  const [imgSharpness, setImgSharpness] = useState(100);
+  const [imgAutoContrast, setImgAutoContrast] = useState(false);
+  const [imgFlip, setImgFlip] = useState('');
+  const [imgNoiseReduction, setImgNoiseReduction] = useState('');
+  const [imgCompressLevel, setImgCompressLevel] = useState('');
+  const [imgRemoveBackground, setImgRemoveBackground] = useState(false);
+  
   // Advanced PDF Options
   const [pdfPassword, setPdfPassword] = useState('');
   const [pdfEncryptPassword, setPdfEncryptPassword] = useState('');
   const [pdfPage, setPdfPage] = useState('');
   const [pdfRotate, setPdfRotate] = useState('');
+  const [pdfAction, setPdfAction] = useState('');
+  const [pdfCompressLevel, setPdfCompressLevel] = useState('');
+  const [pdfWatermark, setPdfWatermark] = useState('');
 
   const [isConverting, setIsConverting] = useState(false);
   const [status, setStatus] = useState(null);
@@ -54,33 +66,43 @@ function App() {
 
   const handleDrop = (e) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setFiles(prev => [...prev, ...Array.from(e.dataTransfer.files)]);
       setStatus(null);
     }
   };
 
   const handleFileSelect = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      setFiles(prev => [...prev, ...Array.from(e.target.files)]);
       setStatus(null);
     }
+    // Clear the input so the same file can be selected again if needed
+    e.target.value = '';
   };
 
-  const removeFile = () => {
-    setFile(null);
+  const removeFile = (index) => {
+    if (index !== undefined) {
+      setFiles(prev => {
+        const newFiles = [...prev];
+        newFiles.splice(index, 1);
+        return newFiles;
+      });
+    } else {
+      setFiles([]);
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
     setStatus(null);
   };
 
   const handleConvert = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
     
     setIsConverting(true);
     setStatus(null);
 
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(f => formData.append('files', f));
     formData.append('output_format', targetFormat);
     
     // Add extra options based on category
@@ -96,6 +118,14 @@ function App() {
       if (imgGrayscale) options.grayscale = true;
       if (imgRemoveMetadata) options.remove_metadata = true;
       if (imgDpi) options.dpi = parseInt(imgDpi, 10);
+      if (imgBrightness && imgBrightness !== 100) options.brightness = parseInt(imgBrightness, 10);
+      if (imgContrast && imgContrast !== 100) options.contrast = parseInt(imgContrast, 10);
+      if (imgSharpness && imgSharpness !== 100) options.sharpness = parseInt(imgSharpness, 10);
+      if (imgAutoContrast) options.auto_contrast = true;
+      if (imgFlip) options.flip = imgFlip;
+      if (imgNoiseReduction) options.noise_reduction = imgNoiseReduction;
+      if (imgCompressLevel) options.compress_level = imgCompressLevel;
+      if (imgRemoveBackground) options.remove_background = true;
     }
     
     if (activeTab === 'document') {
@@ -103,6 +133,9 @@ function App() {
       if (pdfEncryptPassword) options.encrypt_password = pdfEncryptPassword;
       if (pdfPage) options.page = pdfPage;
       if (pdfRotate) options.rotate = parseInt(pdfRotate, 10);
+      if (pdfAction) options.action = pdfAction;
+      if (pdfCompressLevel) options.compress_level = pdfCompressLevel;
+      if (pdfWatermark) options.watermark = pdfWatermark;
     }
 
     formData.append('options', JSON.stringify(options));
@@ -115,11 +148,12 @@ function App() {
 
       if (!response.ok) {
         let errorMsg = 'Conversion failed';
+        const errorText = await response.text();
         try {
-          const errorData = await response.json();
+          const errorData = JSON.parse(errorText);
           errorMsg = errorData.detail || errorMsg;
         } catch(e) {
-          errorMsg = await response.text();
+          errorMsg = errorText || errorMsg;
         }
         throw new Error(errorMsg);
       }
@@ -139,12 +173,21 @@ function App() {
          warnings = JSON.parse(warningsHeader);
       }
 
+      const originalTotalSize = files.reduce((acc, f) => acc + f.size, 0);
+      const newSize = blob.size;
+      const sizeDiffStr = ((1 - (newSize / originalTotalSize)) * 100).toFixed(1);
+      const isReduction = newSize < originalTotalSize;
+
       setStatus({
         type: 'success',
         message: 'Conversion completed successfully!',
         url,
         filename,
-        warnings
+        warnings,
+        originalSize: (originalTotalSize / 1024 / 1024).toFixed(2),
+        newSize: (newSize / 1024 / 1024).toFixed(2),
+        compressionRatio: sizeDiffStr,
+        isReduction
       });
 
     } catch (err) {
@@ -215,7 +258,16 @@ function App() {
 
       <div className="converter-card">
         
-        {!file ? (
+        {/* Hidden persistent file input */}
+        <input 
+          type="file" 
+          multiple
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          onChange={handleFileSelect} 
+        />
+
+        {files.length === 0 ? (
           <div 
             className="upload-area" 
             onDragOver={handleDragOver} 
@@ -223,19 +275,18 @@ function App() {
             onClick={() => fileInputRef.current.click()}
           >
             <div className="upload-icon" style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>+</div>
-            <div className="upload-text">Drag & Drop your file here</div>
+            <div className="upload-text">Drag & Drop your files here</div>
             <div className="upload-subtext">or click to browse</div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }} 
-              onChange={handleFileSelect} 
-            />
           </div>
         ) : (
-          <div className="file-info">
-            <span className="file-name">{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-            <button className="remove-btn" onClick={removeFile}>✖</button>
+          <div className="file-info-container">
+            {files.map((f, i) => (
+              <div key={i} className="file-info" style={{ marginBottom: '10px' }}>
+                <span className="file-name">{f.name} ({(f.size / 1024 / 1024).toFixed(2)} MB)</span>
+                <button className="remove-btn" onClick={() => removeFile(i)}>✖</button>
+              </div>
+            ))}
+            <button onClick={(e) => { e.preventDefault(); fileInputRef.current.click(); }} style={{ background: 'none', border: '1px dashed #ccc', padding: '10px', width: '100%', cursor: 'pointer', marginBottom: '20px', borderRadius: '4px' }}>+ Add More Files</button>
           </div>
         )}
 
@@ -259,6 +310,14 @@ function App() {
             <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#666' }}>Advanced Image Options</h4>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div className="control-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Compress Level</label>
+                <select value={imgCompressLevel} onChange={(e) => setImgCompressLevel(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                  <option value="">Standard (Default)</option>
+                  <option value="high">High Compression (Lowest Size)</option>
+                </select>
+              </div>
+
               <div className="control-group">
                 <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Scale (%)</label>
                 <input type="number" min="1" max="500" value={imgScale} onChange={(e) => { setImgScale(e.target.value); setImgWidth(''); setImgHeight(''); }} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
@@ -287,6 +346,45 @@ function App() {
                 <input type="number" placeholder="e.g. 300" value={imgDpi} onChange={(e) => setImgDpi(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
               </div>
 
+              <div className="control-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Flip Image</label>
+                <select value={imgFlip} onChange={(e) => setImgFlip(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                  <option value="">None</option>
+                  <option value="horizontal">Horizontal (Mirror)</option>
+                  <option value="vertical">Vertical</option>
+                </select>
+              </div>
+
+              <div className="control-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Noise Reduction</label>
+                <select value={imgNoiseReduction} onChange={(e) => setImgNoiseReduction(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                  <option value="">None</option>
+                  <option value="median">Median Filter (Despeckle)</option>
+                  <option value="gaussian">Gaussian Blur (Smooth)</option>
+                </select>
+              </div>
+
+              <div className="control-group" style={{ gridColumn: '1 / -1' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Brightness</span> <span>{imgBrightness}%</span>
+                </label>
+                <input type="range" min="10" max="300" value={imgBrightness} onChange={(e) => setImgBrightness(e.target.value)} style={{ width: '100%' }} />
+              </div>
+
+              <div className="control-group" style={{ gridColumn: '1 / -1' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Contrast</span> <span>{imgContrast}%</span>
+                </label>
+                <input type="range" min="10" max="300" value={imgContrast} onChange={(e) => setImgContrast(e.target.value)} style={{ width: '100%' }} />
+              </div>
+
+              <div className="control-group" style={{ gridColumn: '1 / -1' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Sharpness</span> <span>{imgSharpness}%</span>
+                </label>
+                <input type="range" min="10" max="500" value={imgSharpness} onChange={(e) => setImgSharpness(e.target.value)} style={{ width: '100%' }} />
+              </div>
+
               <div className="control-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <input type="checkbox" id="grayscale" checked={imgGrayscale} onChange={(e) => setImgGrayscale(e.target.checked)} />
                 <label htmlFor="grayscale" style={{ fontSize: '0.8rem', margin: 0, fontWeight: 'bold', cursor: 'pointer' }}>Convert to Grayscale</label>
@@ -295,6 +393,16 @@ function App() {
               <div className="control-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <input type="checkbox" id="metadata" checked={imgRemoveMetadata} onChange={(e) => setImgRemoveMetadata(e.target.checked)} />
                 <label htmlFor="metadata" style={{ fontSize: '0.8rem', margin: 0, fontWeight: 'bold', cursor: 'pointer' }}>Strip EXIF Metadata</label>
+              </div>
+
+              <div className="control-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input type="checkbox" id="autocontrast" checked={imgAutoContrast} onChange={(e) => setImgAutoContrast(e.target.checked)} />
+                <label htmlFor="autocontrast" style={{ fontSize: '0.8rem', margin: 0, fontWeight: 'bold', cursor: 'pointer' }}>Auto-Contrast</label>
+              </div>
+
+              <div className="control-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(59, 130, 246, 0.1)', padding: '10px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                <input type="checkbox" id="removebg" checked={imgRemoveBackground} onChange={(e) => setImgRemoveBackground(e.target.checked)} />
+                <label htmlFor="removebg" style={{ fontSize: '0.8rem', margin: 0, fontWeight: 'bold', cursor: 'pointer', color: '#1d4ed8' }}>✨ AI Background Removal (Slow)</label>
               </div>
               
               {['jpg', 'jpeg', 'webp'].includes(targetFormat) && (
@@ -331,6 +439,27 @@ function App() {
               {targetFormat === 'pdf' && (
                 <>
                   <div className="control-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Batch Action</label>
+                    <select value={pdfAction} onChange={(e) => setPdfAction(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                      <option value="">None</option>
+                      <option value="merge">Merge Multiple PDFs</option>
+                    </select>
+                  </div>
+                  
+                  <div className="control-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Compress Level</label>
+                    <select value={pdfCompressLevel} onChange={(e) => setPdfCompressLevel(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                      <option value="">Standard (Default)</option>
+                      <option value="high">High Compression (Lower Quality)</option>
+                    </select>
+                  </div>
+
+                  <div className="control-group" style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Text Watermark</label>
+                    <input type="text" value={pdfWatermark} onChange={(e) => setPdfWatermark(e.target.value)} placeholder="Enter text to watermark..." style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  </div>
+
+                  <div className="control-group">
                     <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Extract Single Page</label>
                     <input type="number" min="1" value={pdfPage} onChange={(e) => setPdfPage(e.target.value)} placeholder="e.g. 1" style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                   </div>
@@ -353,7 +482,7 @@ function App() {
         <button 
           className={`convert-btn theme-${activeTab}`}
           onClick={handleConvert}
-          disabled={!file || isConverting}
+          disabled={files.length === 0 || isConverting}
         >
           {isConverting ? (
              <><span className="spinner"></span> Processing...</>
@@ -367,6 +496,23 @@ function App() {
             <h3>{status.type === 'success' ? 'Success!' : 'Error'}</h3>
             <p>{status.message}</p>
             
+            {status.type === 'success' && status.originalSize && (
+              <div style={{ background: 'rgba(0,0,0,0.05)', padding: '10px', borderRadius: '4px', marginBottom: '15px', fontSize: '0.9rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <span>Original Size:</span>
+                  <strong>{status.originalSize} MB</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <span>Final Size:</span>
+                  <strong>{status.newSize} MB</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: status.isReduction ? 'green' : 'red' }}>
+                  <span>Size Difference:</span>
+                  <strong>{status.isReduction ? '-' : '+'}{Math.abs(status.compressionRatio)}%</strong>
+                </div>
+              </div>
+            )}
+
             {status.warnings && status.warnings.length > 0 && (
               <ul style={{marginBottom: '16px', paddingLeft: '20px'}}>
                 {status.warnings.map((w, i) => <li key={i}>{w}</li>)}

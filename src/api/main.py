@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import json
 import tempfile
 import shutil
@@ -53,7 +53,7 @@ router = ConversionRouter(registry)
 
 @app.post("/api/convert")
 async def convert_file(
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     output_format: str = Form(...),
     options: str = Form("{}")
 ):
@@ -66,13 +66,17 @@ async def convert_file(
     with tempfile.TemporaryDirectory() as temp_dir_str:
         temp_dir = Path(temp_dir_str)
         
-        # Save the uploaded file
-        input_path = temp_dir / file.filename
-        with open(input_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
+        saved_paths = []
+        for file in files:
+            # Save the uploaded file
+            input_path = temp_dir / file.filename
+            with open(input_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+            saved_paths.append(input_path)
             
         request = ConversionRequest(
-            input_path=input_path,
+            input_path=saved_paths[0], # Primary file for routing
+            input_paths=saved_paths,   # All files for batch/merge
             output_format=output_format,
             output_directory=temp_dir,
             options=parsed_options

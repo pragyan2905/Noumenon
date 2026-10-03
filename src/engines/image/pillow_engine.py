@@ -2,8 +2,10 @@ import time
 from pathlib import Path
 import tempfile
 import shutil
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFile
 
+# Tell Pillow to tolerate slightly corrupted/truncated image files
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 from src.core.interfaces.engine import ConversionEngine
 from src.core.models.conversion import ConversionRequest, ConversionResult
 
@@ -49,6 +51,19 @@ class PillowImageEngine(ConversionEngine):
                 # 2. Process / Transform
                 options = request.options or {}
                 
+                # Background Removal
+                if options.get('remove_background'):
+                    try:
+                        from rembg import remove, new_session
+                        # Use u2net for standard, u2netp for lightweight
+                        session = new_session('u2net')
+                        img = remove(img, session=session)
+                        warnings.append("Background successfully removed using AI.")
+                    except ImportError:
+                        warnings.append("rembg library not installed. Background removal skipped.")
+                    except Exception as e:
+                        warnings.append(f"Background removal failed: {str(e)}")
+                
                 # Transformations
                 if options.get('scale') and options['scale'] != 100:
                     scale_factor = float(options['scale']) / 100.0
@@ -74,6 +89,35 @@ class PillowImageEngine(ConversionEngine):
                     img = ImageOps.mirror(img)
                 elif options.get('flip') == 'vertical':
                     img = ImageOps.flip(img)
+
+                # Color Enhancements
+                if options.get('auto_contrast'):
+                    if img.mode not in ('L', 'RGB'):
+                        img_converted = img.convert('RGB')
+                        img_converted = ImageOps.autocontrast(img_converted)
+                        img = img_converted
+                    else:
+                        img = ImageOps.autocontrast(img)
+
+                from PIL import ImageEnhance, ImageFilter
+                
+                if options.get('brightness') and options['brightness'] != 100:
+                    enhancer = ImageEnhance.Brightness(img)
+                    img = enhancer.enhance(float(options['brightness']) / 100.0)
+                    
+                if options.get('contrast') and options['contrast'] != 100:
+                    enhancer = ImageEnhance.Contrast(img)
+                    img = enhancer.enhance(float(options['contrast']) / 100.0)
+                    
+                if options.get('sharpness') and options['sharpness'] != 100:
+                    enhancer = ImageEnhance.Sharpness(img)
+                    img = enhancer.enhance(float(options['sharpness']) / 100.0)
+                    
+                # Noise Reduction (Filters)
+                if options.get('noise_reduction') == 'median':
+                    img = img.filter(ImageFilter.MedianFilter(size=3))
+                elif options.get('noise_reduction') == 'gaussian':
+                    img = img.filter(ImageFilter.GaussianBlur(radius=2))
                     
                 # Handle transparency issues (e.g., converting PNG with transparent background to JPEG)
                 if img.mode in ('RGBA', 'P', 'LA') and target_ext in ('jpeg', 'bmp'):
@@ -110,6 +154,19 @@ class PillowImageEngine(ConversionEngine):
                         save_kwargs['quality'] = int(options['quality'])
                         if target_ext == 'jpeg':
                             save_kwargs['optimize'] = True
+                            
+                    # Aggressive Compression Feature
+                    if options.get('compress_level') == 'high':
+                        if target_ext in ('jpeg', 'jpg', 'webp'):
+                            save_kwargs['quality'] = min(int(options.get('quality', 60)), 60)
+                            save_kwargs['optimize'] = True
+                            if target_ext in ('jpeg', 'jpg'):
+                                save_kwargs['progressive'] = True
+                        elif target_ext == 'png':
+                            save_kwargs['optimize'] = True
+                            # Quantize PNGs to 256 colors for massive file size reduction
+                            if img.mode != 'P':
+                                img = img.convert('P', palette=Image.ADAPTIVE, colors=256)
                             
                     if options.get('dpi'):
                         val = int(options['dpi'])
