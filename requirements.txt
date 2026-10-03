@@ -13,3 +13,4 @@ markdown
 beautifulsoup4
 lxml
 rembg[cpu]>=2.0.85
+imageio-ffmpeg>=0.5.0

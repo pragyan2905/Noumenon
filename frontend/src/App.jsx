@@ -58,6 +58,11 @@ function App() {
   const [pdfCompressLevel, setPdfCompressLevel] = useState('');
   const [pdfWatermark, setPdfWatermark] = useState('');
 
+  // Advanced Media Options
+  const [mediaTrimStart, setMediaTrimStart] = useState('');
+  const [mediaTrimEnd, setMediaTrimEnd] = useState('');
+  const [mediaCompressLevel, setMediaCompressLevel] = useState('');
+
   const [isConverting, setIsConverting] = useState(false);
   const [status, setStatus] = useState(null);
   const fileInputRef = useRef(null);
@@ -136,6 +141,12 @@ function App() {
       if (pdfAction) options.action = pdfAction;
       if (pdfCompressLevel) options.compress_level = pdfCompressLevel;
       if (pdfWatermark) options.watermark = pdfWatermark;
+    }
+    
+    if (activeTab === 'media') {
+      if (mediaTrimStart) options.trim_start = mediaTrimStart;
+      if (mediaTrimEnd) options.trim_end = mediaTrimEnd;
+      if (mediaCompressLevel) options.compress_level = mediaCompressLevel;
     }
 
     formData.append('options', JSON.stringify(options));
@@ -443,6 +454,7 @@ function App() {
                     <select value={pdfAction} onChange={(e) => setPdfAction(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
                       <option value="">None</option>
                       <option value="merge">Merge Multiple PDFs</option>
+                      <option value="split">Split all pages to ZIP</option>
                     </select>
                   </div>
                   
@@ -474,6 +486,34 @@ function App() {
                     </select>
                   </div>
                 </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ALWAYS VISIBLE ADVANCED MEDIA OPTIONS */}
+        {activeTab === 'media' && (
+          <div className="media-options-container" style={{ marginTop: '1rem', padding: '1rem', background: 'var(--card-bg)', borderRadius: '8px', border: '1px solid #eae6df', marginBottom: '1rem' }}>
+            <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#666' }}>Advanced Media Options</h4>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div className="control-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Trim Start (e.g. 00:00:10)</label>
+                <input type="text" value={mediaTrimStart} onChange={(e) => setMediaTrimStart(e.target.value)} placeholder="00:00:00" style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+              </div>
+              <div className="control-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Trim End (e.g. 00:00:30)</label>
+                <input type="text" value={mediaTrimEnd} onChange={(e) => setMediaTrimEnd(e.target.value)} placeholder="00:00:00" style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+              </div>
+              
+              {['mp4', 'mkv', 'webm', 'mp3'].includes(targetFormat) && (
+                <div className="control-group" style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Compress Level</label>
+                  <select value={mediaCompressLevel} onChange={(e) => setMediaCompressLevel(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                    <option value="">Standard (High Quality)</option>
+                    <option value="high">Aggressive Compression (Web Ready)</option>
+                  </select>
+                </div>
               )}
             </div>
           </div>

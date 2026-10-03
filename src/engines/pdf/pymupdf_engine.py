@@ -208,6 +208,25 @@ class PyMuPdfEngine(ConversionEngine):
                         save_kwargs["owner_pw"] = encrypt_pwd
                         save_kwargs["user_pw"] = encrypt_pwd
                         
+                    if action == 'split':
+                        split_dir = request.output_directory / f"{request.input_path.stem}_split"
+                        split_dir.mkdir(exist_ok=True)
+                        for page_num in range(doc.page_count):
+                            new_doc = fitz.open()
+                            new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+                            page_path = split_dir / f"page_{page_num + 1}.pdf"
+                            new_doc.save(str(page_path), **save_kwargs)
+                            new_doc.close()
+                        doc.close()
+                        
+                        return ConversionResult(
+                            success=True,
+                            output_path=split_dir,
+                            engine_used=self.__class__.__name__,
+                            duration_seconds=time.time() - start_time,
+                            warnings=warnings
+                        )
+                        
                     # Save with optimization and/or encryption
                     doc.save(temp_out, **save_kwargs)
                     doc.close()
